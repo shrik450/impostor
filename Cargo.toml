@@ -2,4 +2,6 @@
 
 members = [
   "inko_core",
+  "inko_compiler_axum",
+  "inko_cli",
 ]

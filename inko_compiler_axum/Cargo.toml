@@ -1,0 +1,10 @@
+[package]
+edition = "2021"
+name = "inko_compiler_axum"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = "0.7.2"
+inko_core = {path = "../inko_core"}

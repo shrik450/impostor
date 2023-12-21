@@ -18,18 +18,19 @@
 use crate::ast::json;
 
 ///
-/// Hurl AST
+/// AST for an entire mock file.
 ///
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HurlFile {
+pub struct InkoFile {
     pub entries: Vec<Entry>,
     pub line_terminators: Vec<LineTerminator>,
 }
 
+/// AST for a single mock entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
     pub request: Request,
-    pub response: Option<Response>,
+    pub response: Response,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -38,7 +39,7 @@ pub struct Request {
     pub space0: Whitespace,
     pub method: Method,
     pub space1: Whitespace,
-    pub url: Template,
+    pub path: Template,
     pub line_terminator0: LineTerminator,
     pub headers: Vec<Header>,
     pub sections: Vec<Section>,
@@ -55,6 +56,7 @@ impl Request {
         }
         vec![]
     }
+
     pub fn form_params(&self) -> Vec<KeyValue> {
         for section in &self.sections {
             if let SectionValue::FormParams(params) = &section.value {

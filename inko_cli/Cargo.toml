@@ -1,0 +1,22 @@
+[package]
+edition = "2021"
+name = "inko_cli"
+version = "0.1.0"
+
+[[bin]]
+name = "inko"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = "0.7.2"
+clap = {version = "4.4.11", features = ["derive"]}
+eyre = "0.6.11"
+inko_compiler_axum = {version = "0.1.0", path = "../inko_compiler_axum"}
+inko_core = {version = "0.1.0", path = "../inko_core"}
+tokio = {version = "1.35.1", features = ["full"]}
+
+[dev-dependencies]
+assert_cmd = "2.0.12"
+rand = "0.8.5"

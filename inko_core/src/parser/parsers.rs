@@ -21,17 +21,17 @@ use crate::parser::bytes::*;
 use crate::parser::combinators::*;
 use crate::parser::error::*;
 use crate::parser::number::natural;
+use crate::parser::path::path;
 use crate::parser::primitives::*;
 use crate::parser::reader::Reader;
 use crate::parser::sections::*;
-use crate::parser::url::url;
 use crate::parser::ParseResult;
 
-pub fn hurl_file(reader: &mut Reader) -> ParseResult<HurlFile> {
+pub fn inko_file(reader: &mut Reader) -> ParseResult<InkoFile> {
     let entries = zero_or_more(entry, reader)?;
     let line_terminators = optional_line_terminators(reader)?;
     eof(reader)?;
-    Ok(HurlFile {
+    Ok(InkoFile {
         entries,
         line_terminators,
     })
@@ -39,7 +39,7 @@ pub fn hurl_file(reader: &mut Reader) -> ParseResult<HurlFile> {
 
 fn entry(reader: &mut Reader) -> ParseResult<Entry> {
     let req = request(reader)?;
-    let resp = optional(response, reader)?;
+    let resp = response(reader)?;
     Ok(Entry {
         request: req,
         response: resp,
@@ -52,11 +52,11 @@ fn request(reader: &mut Reader) -> ParseResult<Request> {
     let space0 = zero_or_more_spaces(reader)?;
     let m = method(reader)?;
     let space1 = one_or_more_spaces(reader)?;
-    let u = url(reader)?;
+    let u = path(reader)?;
 
     let line_terminator0 = line_terminator(reader)?;
     let headers = zero_or_more(key_value, reader)?;
-    let sections = request_sections(reader)?;
+    let sections = response_sections(reader)?;
     let b = optional(body, reader)?;
     let source_info = SourceInfo::new(start.pos, reader.state.pos);
 
@@ -79,7 +79,7 @@ fn request(reader: &mut Reader) -> ParseResult<Request> {
         space0,
         method: m,
         space1,
-        url: u,
+        path: u,
         line_terminator0,
         headers,
         sections,
@@ -97,7 +97,7 @@ fn response(reader: &mut Reader) -> ParseResult<Response> {
     let _status = status(reader)?;
     let line_terminator0 = line_terminator(reader)?;
     let headers = zero_or_more(key_value, reader)?;
-    let sections = response_sections(reader)?;
+    let sections = request_sections(reader)?;
     let b = optional(body, reader)?;
     Ok(Response {
         line_terminators,
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn test_hurl_file() {
         let mut reader = Reader::new("GET http://google.fr");
-        let hurl_file = hurl_file(&mut reader).unwrap();
+        let hurl_file = inko_file(&mut reader).unwrap();
         assert_eq!(hurl_file.entries.len(), 1);
     }
 
@@ -244,7 +244,7 @@ mod tests {
         let mut reader = Reader::new("GET http://google.fr\nHTTP/1.1 200");
         let e = entry(&mut reader).unwrap();
         assert_eq!(e.request.method, Method("GET".to_string()));
-        assert_eq!(e.response.unwrap().status.value, StatusValue::Specific(200));
+        assert_eq!(e.response.status.value, StatusValue::Specific(200));
     }
 
     #[test]
@@ -261,7 +261,7 @@ mod tests {
                 value: " ".to_string(),
                 source_info: SourceInfo::new(Pos::new(1, 4), Pos::new(1, 5)),
             },
-            url: Template {
+            path: Template {
                 elements: vec![TemplateElement::String {
                     value: String::from("http://google.fr"),
                     encoded: String::from("http://google.fr"),
@@ -300,7 +300,7 @@ mod tests {
                 value: "  ".to_string(),
                 source_info: SourceInfo::new(Pos::new(1, 4), Pos::new(1, 6)),
             },
-            url: Template {
+            path: Template {
                 elements: vec![TemplateElement::String {
                     value: String::from("http://google.fr"),
                     encoded: String::from("http://google.fr"),
@@ -561,5 +561,22 @@ mod tests {
         let error = body(&mut reader).err().unwrap();
         assert_eq!(error.pos, Pos { line: 1, column: 2 });
         assert!(!error.recoverable);
+    }
+
+    #[test]
+    fn test_basic_get_mock() {
+        let mock = r#"
+            GET /hello
+
+            HTTP 200
+            Content-Type: text/plain
+
+            "Hello, World!"
+        "#;
+        let mut reader = Reader::new(mock);
+        let inko_file = inko_file(&mut reader).unwrap();
+        assert_eq!(inko_file.entries.len(), 1);
+        assert_eq!(reader.state.cursor, mock.len());
+        println!("{:#?}", inko_file);
     }
 }

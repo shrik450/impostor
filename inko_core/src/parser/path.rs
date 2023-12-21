@@ -21,20 +21,12 @@ use crate::parser::primitives::*;
 use crate::parser::reader::Reader;
 use crate::parser::{expr, ParseResult};
 
-pub fn url(reader: &mut Reader) -> ParseResult<Template> {
+pub fn path(reader: &mut Reader) -> ParseResult<Template> {
     // Must be neither JSON-encoded nor empty.
     // But more restrictive: whitelist characters, not empty
     let start = reader.state;
     let mut elements = vec![];
     let mut buffer = String::new();
-
-    if !url_prefix_valid(reader) {
-        return Err(Error::new(
-            reader.state.pos,
-            false,
-            ParseError::UrlInvalidStart,
-        ));
-    }
 
     loop {
         let save = reader.state;
@@ -114,18 +106,6 @@ pub fn url(reader: &mut Reader) -> ParseResult<Template> {
     })
 }
 
-/// Returns true if url starts with http://, https:// or {{
-fn url_prefix_valid(reader: &mut Reader) -> bool {
-    let prefixes = ["https://", "http://", "{{"];
-    for expected_p in prefixes.iter() {
-        let current_p = reader.peek_n(expected_p.len());
-        if &current_p == expected_p {
-            return true;
-        }
-    }
-    false
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,7 +114,7 @@ mod tests {
     fn test_url() {
         let mut reader = Reader::new("http://google.fr # ");
         assert_eq!(
-            url(&mut reader).unwrap(),
+            path(&mut reader).unwrap(),
             Template {
                 elements: vec![TemplateElement::String {
                     value: String::from("http://google.fr"),
@@ -151,7 +131,7 @@ mod tests {
     fn test_url2() {
         let mut reader = Reader::new("http://localhost:8000/cookies/set-session-cookie2-valueA");
         assert_eq!(
-            url(&mut reader).unwrap(),
+            path(&mut reader).unwrap(),
             Template {
                 elements: vec![TemplateElement::String {
                     value: String::from("http://localhost:8000/cookies/set-session-cookie2-valueA"),
@@ -170,7 +150,7 @@ mod tests {
     fn test_url_with_expression() {
         let mut reader = Reader::new("http://{{host}}.fr ");
         assert_eq!(
-            url(&mut reader).unwrap(),
+            path(&mut reader).unwrap(),
             Template {
                 elements: vec![
                     TemplateElement::String {
@@ -206,7 +186,7 @@ mod tests {
     #[test]
     fn test_url_error_variable() {
         let mut reader = Reader::new("http://{{host>}}.fr");
-        let error = url(&mut reader).err().unwrap();
+        let error = path(&mut reader).err().unwrap();
         assert_eq!(
             error.pos,
             Pos {
@@ -227,7 +207,7 @@ mod tests {
     #[test]
     fn test_url_error_missing_delimiter() {
         let mut reader = Reader::new("http://{{host");
-        let error = url(&mut reader).err().unwrap();
+        let error = path(&mut reader).err().unwrap();
         assert_eq!(
             error.pos,
             Pos {
@@ -247,7 +227,7 @@ mod tests {
     #[test]
     fn test_url_error_empty() {
         let mut reader = Reader::new(" # eol");
-        let error = url(&mut reader).err().unwrap();
+        let error = path(&mut reader).err().unwrap();
         assert_eq!(error.pos, Pos { line: 1, column: 1 });
         assert_eq!(error.inner, ParseError::UrlInvalidStart);
     }
@@ -311,25 +291,7 @@ mod tests {
         for s in valid_urls {
             //eprintln!("{}", s);
             let mut reader = Reader::new(s);
-            assert!(url(&mut reader).is_ok());
-        }
-    }
-
-    #[test]
-    fn test_invalid_urls() {
-        // from official url_test.go file
-        let invalid_urls = [
-            "foo.com",
-            "httpfoo.com",
-            "http:foo.com",
-            "https:foo.com",
-            "https:/foo.com",
-            "{https://foo.com",
-        ];
-
-        for s in invalid_urls {
-            let mut reader = Reader::new(s);
-            assert!(url(&mut reader).is_err());
+            assert!(path(&mut reader).is_ok());
         }
     }
 }

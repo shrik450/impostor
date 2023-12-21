@@ -18,9 +18,9 @@
 pub type ParseResult<T> = Result<T, Error>;
 pub type ParseFunc<T> = fn(&mut Reader) -> ParseResult<T>;
 
-pub fn parse_hurl_file(s: &str) -> ParseResult<HurlFile> {
+pub fn parse_hurl_file(s: &str) -> ParseResult<InkoFile> {
     let mut reader = Reader::new(s);
-    parsers::hurl_file(&mut reader)
+    parsers::inko_file(&mut reader)
 }
 
 pub use self::error::{Error, JsonErrorVariant, ParseError};
@@ -30,7 +30,7 @@ pub use self::json::{
 };
 pub use self::reader::Reader;
 pub use self::template::templatize;
-use crate::ast::HurlFile;
+use crate::ast::InkoFile;
 
 mod base64;
 mod bytes;
@@ -46,6 +46,7 @@ mod multiline;
 mod number;
 mod option;
 mod parsers;
+mod path;
 mod predicate;
 mod predicate_value;
 mod primitives;
@@ -54,5 +55,4 @@ mod reader;
 mod sections;
 mod string;
 mod template;
-mod url;
 mod xml;
