@@ -190,7 +190,7 @@ impl ObjectElement {
 }
 
 impl Template {
-    fn encoded(&self) -> String {
+    pub fn encoded(&self) -> String {
         let mut s = String::new();
         if let Some(d) = self.delimiter {
             s.push(d)

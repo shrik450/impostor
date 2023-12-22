@@ -159,14 +159,8 @@ pub enum VersionValue {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Status {
-    pub value: StatusValue,
+    pub value: u16,
     pub source_info: SourceInfo,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum StatusValue {
-    Any,
-    Specific(u64),
 }
 
 pub type Header = KeyValue;

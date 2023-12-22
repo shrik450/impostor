@@ -18,7 +18,7 @@
 pub type ParseResult<T> = Result<T, Error>;
 pub type ParseFunc<T> = fn(&mut Reader) -> ParseResult<T>;
 
-pub fn parse_hurl_file(s: &str) -> ParseResult<InkoFile> {
+pub fn parse_inko_file(s: &str) -> ParseResult<InkoFile> {
     let mut reader = Reader::new(s);
     parsers::inko_file(&mut reader)
 }

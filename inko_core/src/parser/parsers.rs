@@ -164,12 +164,12 @@ fn version(reader: &mut Reader) -> ParseResult<Version> {
 
 fn status(reader: &mut Reader) -> ParseResult<Status> {
     let start = reader.state.pos;
-    let value = match try_literal("*", reader) {
-        Ok(_) => StatusValue::Any,
-        Err(_) => match natural(reader) {
-            Ok(value) => StatusValue::Specific(value),
+    let value = match natural(reader) {
+        Ok(value) => match value.try_into() {
+            Ok(value) => value,
             Err(_) => return Err(Error::new(start, false, ParseError::Status)),
         },
+        Err(_) => return Err(Error::new(start, false, ParseError::Status)),
     };
     let end = reader.state.pos;
     Ok(Status {
@@ -244,7 +244,7 @@ mod tests {
         let mut reader = Reader::new("GET http://google.fr\nHTTP/1.1 200");
         let e = entry(&mut reader).unwrap();
         assert_eq!(e.request.method, Method("GET".to_string()));
-        assert_eq!(e.response.status.value, StatusValue::Specific(200));
+        assert_eq!(e.response.status.value, 200);
     }
 
     #[test]
@@ -454,7 +454,7 @@ mod tests {
         let r = response(&mut reader).unwrap();
 
         assert_eq!(r.version.value, VersionValue::Version11);
-        assert_eq!(r.status.value, StatusValue::Specific(200));
+        assert_eq!(r.status.value, 200);
     }
 
     #[test]
@@ -491,12 +491,12 @@ mod tests {
     #[test]
     fn test_status() {
         let mut reader = Reader::new("*");
-        let s = status(&mut reader).unwrap();
-        assert_eq!(s.value, StatusValue::Any);
+        let result = status(&mut reader);
+        assert!(result.is_err());
 
         let mut reader = Reader::new("200");
         let s = status(&mut reader).unwrap();
-        assert_eq!(s.value, StatusValue::Specific(200));
+        assert_eq!(s.value, 200);
 
         let mut reader = Reader::new("xxx");
         let result = status(&mut reader);

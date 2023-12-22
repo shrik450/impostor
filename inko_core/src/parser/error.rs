@@ -15,7 +15,10 @@
  * limitations under the License.
  *
  */
-use crate::ast::{Pos, SourceInfo};
+use crate::{
+    ast::{Pos, SourceInfo},
+    error::Error as _,
+};
 use std::cmp;
 
 /// Represents a parser error.
@@ -284,6 +287,19 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
         }
     }
     column[v1.len()]
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let pos = self.pos;
+        let description = self.description();
+        let fixme = self.fixme();
+        write!(
+            f,
+            "{} at {}:{} - {}",
+            description, pos.line, pos.column, fixme
+        )
+    }
 }
 
 #[cfg(test)]

@@ -51,15 +51,6 @@ impl fmt::Display for Status {
     }
 }
 
-impl fmt::Display for StatusValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            StatusValue::Any => write!(f, "*"),
-            StatusValue::Specific(v) => write!(f, "{v}"),
-        }
-    }
-}
-
 impl fmt::Display for Template {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buffer = String::new();
