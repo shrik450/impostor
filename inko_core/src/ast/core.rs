@@ -295,7 +295,7 @@ pub struct Query {
 #[allow(clippy::large_enum_variant)]
 pub enum QueryValue {
     Status,
-    Url,
+    Path,
     Header {
         space0: Whitespace,
         name: Template,
@@ -312,6 +312,10 @@ pub enum QueryValue {
     Jsonpath {
         space0: Whitespace,
         expr: Template,
+    },
+    QueryParam {
+        space0: Whitespace,
+        name: Template,
     },
     Regex {
         space0: Whitespace,

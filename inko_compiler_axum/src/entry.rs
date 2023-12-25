@@ -9,6 +9,7 @@ use crate::template::StringOrTemplate;
 pub enum EntryCompilationError {
     InvalidStatusCode(u16),
     InvalidMethod(String),
+    NotYetImplemented(String),
 }
 
 impl std::fmt::Display for EntryCompilationError {
@@ -20,6 +21,9 @@ impl std::fmt::Display for EntryCompilationError {
             EntryCompilationError::InvalidMethod(method) => {
                 write!(f, "invalid method: {}", method)
             }
+            EntryCompilationError::NotYetImplemented(message) => {
+                write!(f, "not yet implemented: {}", message)
+            }
         }
     }
 }
@@ -29,6 +33,8 @@ struct CompiledEntry {
     // Attributes required for routing
     path: String,
     method: axum::http::Method,
+
+    // Attributes required for matching the request
 
     // Attributes required for constructing the response
     status_code: axum::http::StatusCode,

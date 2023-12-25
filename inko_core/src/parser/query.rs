@@ -62,7 +62,7 @@ fn status_query(reader: &mut Reader) -> ParseResult<QueryValue> {
 
 fn url_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     try_literal("url", reader)?;
-    Ok(QueryValue::Url)
+    Ok(QueryValue::Path)
 }
 
 fn header_query(reader: &mut Reader) -> ParseResult<QueryValue> {

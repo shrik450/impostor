@@ -1,3 +1,4 @@
+mod asserts;
 mod entry;
 mod error;
 pub(crate) mod template;
