@@ -1,14 +1,22 @@
 use std::str::FromStr;
 
-use axum::{extract::Request, http::Response};
-use inko_core::ast::{Bytes, Entry};
+use axum::{
+    extract::Request,
+    http::{header::InvalidHeaderValue, HeaderMap, HeaderName, HeaderValue},
+};
+use inko_core::ast::{Bytes as AstBytes, Entry as AstEntry};
 
-use crate::template::StringOrTemplate;
+use crate::{
+    asserts::{Assert, AssertCompilationError},
+    template::StringOrTemplate,
+};
 
 #[derive(Debug)]
 pub enum EntryCompilationError {
     InvalidStatusCode(u16),
     InvalidMethod(String),
+    InvalidHeaderName(Box<dyn std::error::Error + Send + Sync>),
+    AssertCompilationError(AssertCompilationError),
     NotYetImplemented(String),
 }
 
@@ -24,28 +32,34 @@ impl std::fmt::Display for EntryCompilationError {
             EntryCompilationError::NotYetImplemented(message) => {
                 write!(f, "not yet implemented: {}", message)
             }
+            EntryCompilationError::InvalidHeaderName(e) => {
+                write!(f, "invalid header name: {}", e)
+            }
+            EntryCompilationError::AssertCompilationError(e) => write!(f, "invalid assert: {}", e),
         }
     }
 }
 
 /// An entry from the Inko AST compiled for use as an axum handler.
-struct CompiledEntry {
+#[derive(Clone)]
+pub(crate) struct Entry {
     // Attributes required for routing
-    path: String,
-    method: axum::http::Method,
+    pub path: String,
+    pub method: axum::http::Method,
 
     // Attributes required for matching the request
+    asserts: Vec<Assert>,
 
     // Attributes required for constructing the response
     status_code: axum::http::StatusCode,
-    headers: Vec<(String, StringOrTemplate)>,
+    headers: Vec<(HeaderName, StringOrTemplate)>,
     body: Option<StringOrTemplate>,
 }
 
-impl TryFrom<Entry> for CompiledEntry {
+impl TryFrom<AstEntry> for Entry {
     type Error = EntryCompilationError;
 
-    fn try_from(entry: Entry) -> Result<CompiledEntry, EntryCompilationError> {
+    fn try_from(entry: AstEntry) -> Result<Entry, EntryCompilationError> {
         let path = entry.request.path.to_string();
         let method = match axum::http::Method::from_str(&entry.request.method.0) {
             Ok(method) => method,
@@ -63,49 +77,119 @@ impl TryFrom<Entry> for CompiledEntry {
 
         let mut headers = Vec::new();
         for header in entry.response.headers {
+            let header_name = match HeaderName::from_str(&header.key.encoded()) {
+                Ok(header_name) => header_name,
+                Err(e) => return Err(EntryCompilationError::InvalidHeaderName(Box::new(e))),
+            };
             headers.push((
-                header.key.to_string(),
+                header_name,
                 StringOrTemplate::from_ast_template(header.value),
             ));
         }
         let body = entry.response.body.map(|body| compile_body(body.value));
+        let asserts: Result<Vec<Assert>, AssertCompilationError> = entry
+            .request
+            .asserts()
+            .iter()
+            .map(|assert| assert.clone().try_into())
+            .chain(
+                entry
+                    .request
+                    .headers
+                    .iter()
+                    .map(|header| header.clone().try_into()),
+            )
+            .collect();
+        let asserts = asserts.map_err(EntryCompilationError::AssertCompilationError)?;
 
-        Ok(CompiledEntry {
+        Ok(Entry {
             path,
             method,
             status_code,
+            asserts,
             headers,
             body,
         })
     }
 }
 
-impl CompiledEntry {
-    async fn handler(&self, _request: Request) -> axum::http::Result<Response<Vec<u8>>> {
-        let mut response = Response::builder();
-        response = response.status(self.status_code);
+struct InternalError {
+    inner_error: Box<dyn std::fmt::Display>,
+}
 
-        if let Some(body) = &self.body {
-            match body.execute() {
-                Ok(string_body) => response.body(string_body.into_bytes()),
-                Err(e) => Response::builder()
-                    .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(format!("template error: {}", e).into()),
-            }
-        } else {
-            response.body(Vec::new())
-        }
+impl std::fmt::Display for InternalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "internal error: {}", self.inner_error)
     }
 }
 
-fn compile_body(body: Bytes) -> StringOrTemplate {
+impl Entry {
+    pub fn handler(&self, _request: Request) -> (axum::http::StatusCode, HeaderMap, Vec<u8>) {
+        let status_code = self.status_code;
+
+        let headers: Result<HeaderMap, _> = self
+            .headers
+            .iter()
+            .map(|(k, v)| {
+                let header_name = k.to_owned();
+                let header_value = v.execute();
+                let header_value = match header_value {
+                    Ok(header_value) => {
+                        HeaderValue::from_str(&header_value).map_err(|e| InternalError {
+                            inner_error: Box::new(e),
+                        })
+                    }
+                    Err(e) => Err(InternalError {
+                        inner_error: Box::new(e),
+                    }),
+                };
+                match header_value {
+                    Ok(header_value) => Ok((header_name, header_value)),
+                    Err(e) => Err(e),
+                }
+            })
+            .collect();
+        let headers = match headers {
+            Ok(headers) => headers,
+            Err(e) => {
+                return (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    HeaderMap::new(),
+                    format!("template error: {}", e).into(),
+                )
+            }
+        };
+
+        if let Some(body) = &self.body {
+            match body.execute() {
+                Ok(string_body) => (status_code, headers, string_body.into_bytes()),
+                Err(e) => (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    HeaderMap::new(),
+                    format!("template error: {}", e).into(),
+                ),
+            }
+        } else {
+            (self.status_code, headers, vec![])
+        }
+    }
+
+    pub fn matches(&self, request: &Request) -> bool {
+        self.asserts
+            .iter()
+            // TODO: Log failures
+            .all(|a| a.apply(request).is_ok_and(|r| r))
+    }
+}
+
+fn compile_body(body: AstBytes) -> StringOrTemplate {
     match body {
-        Bytes::Json(val) => StringOrTemplate::String(val.encoded()),
-        Bytes::Xml(val) => StringOrTemplate::String(val),
-        Bytes::MultilineString(val) => StringOrTemplate::from_ast_template(val.value()),
-        Bytes::OnelineString(val) => StringOrTemplate::from_ast_template(val),
-        Bytes::Base64(_) => todo!(),
-        Bytes::File(_) => todo!(),
-        Bytes::Hex(_) => todo!(),
+        AstBytes::Json(val) => StringOrTemplate::String(val.encoded()),
+        AstBytes::Xml(val) => StringOrTemplate::String(val),
+        AstBytes::MultilineString(val) => StringOrTemplate::from_ast_template(val.value()),
+        AstBytes::OnelineString(val) => StringOrTemplate::from_ast_template(val),
+        AstBytes::Base64(_) => todo!(),
+        AstBytes::File(_) => todo!(),
+        AstBytes::Hex(_) => todo!(),
     }
 }

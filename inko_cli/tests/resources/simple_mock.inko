@@ -1,4 +1,14 @@
 GET /
+Accept: application/json
+
+HTTP 200
+Content-Type: application/json
+
+{
+    "message": "Hello, world!"
+}
+
+GET /
 
 HTTP 200
 Content-Type: text/html; charset=utf-8

@@ -6,12 +6,14 @@ use regex::Regex;
 
 use super::AssertCompilationError;
 
+#[derive(Clone)]
 pub(super) enum Number {
     Integer(i64),
     Float(f64),
     BigInteger(String),
 }
 
+#[derive(Clone)]
 pub(super) enum Predicate {
     Equal(serde_json::Value),
     NotEqual(serde_json::Value),
@@ -41,7 +43,7 @@ fn try_into_serde_value(
         AstPredicateValue::Number(value) => match value {
             inko_core::ast::Number::Float(f) => serde_json::to_value(f.value).expect("cannot fail"),
             inko_core::ast::Number::Integer(i) => serde_json::to_value(i).expect("cannot fail"),
-            inko_core::ast::Number::BigInteger(i) => todo!("support compiling big integer assert"),
+            inko_core::ast::Number::BigInteger(_) => todo!("support compiling big integer assert"),
         },
         AstPredicateValue::Bool(value) => serde_json::Value::Bool(value),
         AstPredicateValue::Null => serde_json::Value::Null,
@@ -295,7 +297,7 @@ fn compare_include(first: &serde_json::Value, second: &serde_json::Value) -> boo
 
 fn compare_match(first: &Regex, second: &serde_json::Value) -> bool {
     match second {
-        serde_json::Value::String(second) => first.is_match(&second),
+        serde_json::Value::String(second) => first.is_match(second),
         _ => false,
     }
 }

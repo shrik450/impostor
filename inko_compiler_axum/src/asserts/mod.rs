@@ -4,17 +4,19 @@ mod query;
 use std::fmt::Display;
 
 use axum::extract::Request;
+use serde_json::json;
 
 use self::{predicate::Predicate, query::Query};
 
 #[allow(clippy::enum_variant_names)]
-pub(crate) enum AssertCompilationError {
+#[derive(Debug)]
+pub enum AssertCompilationError {
     InvalidQueryType,
     InvalidPredicate,
     InvalidPredicateValue(String),
 }
 
-pub(crate) enum AssertionError {
+pub enum AssertionError {
     InvalidQueryValue(Box<dyn Display>),
 }
 
@@ -30,6 +32,7 @@ impl Display for AssertCompilationError {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct Assert {
     query: Query,
     predicate: Predicate,
@@ -52,8 +55,24 @@ impl TryFrom<inko_core::ast::Assert> for Assert {
     }
 }
 
+impl TryFrom<inko_core::ast::Header> for Assert {
+    type Error = AssertCompilationError;
+
+    fn try_from(value: inko_core::ast::Header) -> Result<Self, Self::Error> {
+        let query = Query::Header(value.key.encoded());
+        let not = false;
+        let predicate = Predicate::Equal(json!(value.value.encoded()));
+
+        Ok(Assert {
+            query,
+            predicate,
+            not,
+        })
+    }
+}
+
 impl Assert {
-    fn apply(&self, request: &Request) -> Result<bool, AssertionError> {
+    pub fn apply(&self, request: &Request) -> Result<bool, AssertionError> {
         let query_value = match self.query.apply(request) {
             Ok(value) => value,
             Err(e) => return Err(AssertionError::InvalidQueryValue(Box::new(e))),

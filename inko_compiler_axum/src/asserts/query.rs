@@ -6,6 +6,7 @@ use inko_core::ast::{Query as AstQuery, QueryValue as AstQueryValue};
 
 use super::AssertCompilationError;
 
+#[derive(Clone)]
 pub(super) enum Query {
     Path,
     Header(String),

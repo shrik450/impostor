@@ -48,6 +48,26 @@ pub struct Request {
 }
 
 impl Request {
+    /// Returns the captures list of this spec request.
+    pub fn captures(&self) -> Vec<Capture> {
+        for section in self.sections.iter() {
+            if let SectionValue::Captures(captures) = &section.value {
+                return captures.clone();
+            }
+        }
+        vec![]
+    }
+
+    /// Returns the asserts list of this spec request.
+    pub fn asserts(&self) -> Vec<Assert> {
+        for section in self.sections.iter() {
+            if let SectionValue::Asserts(asserts) = &section.value {
+                return asserts.clone();
+            }
+        }
+        vec![]
+    }
+
     pub fn querystring_params(&self) -> Vec<KeyValue> {
         for section in &self.sections {
             if let SectionValue::QueryParams(params) = &section.value {
@@ -116,27 +136,7 @@ pub struct Response {
     pub source_info: SourceInfo,
 }
 
-impl Response {
-    /// Returns the captures list of this spec response.
-    pub fn captures(&self) -> Vec<Capture> {
-        for section in self.sections.iter() {
-            if let SectionValue::Captures(captures) = &section.value {
-                return captures.clone();
-            }
-        }
-        vec![]
-    }
-
-    /// Returns the asserts list of this spec response.
-    pub fn asserts(&self) -> Vec<Assert> {
-        for section in self.sections.iter() {
-            if let SectionValue::Asserts(asserts) = &section.value {
-                return asserts.clone();
-            }
-        }
-        vec![]
-    }
-}
+impl Response {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Method(pub String);

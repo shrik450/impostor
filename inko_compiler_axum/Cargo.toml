@@ -2,13 +2,12 @@
 edition = "2021"
 name = "inko_compiler_axum"
 version = "0.1.0"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 axum = "0.7.2"
-axum-extra = {version = "0.9.0", features = ["cookie"]}
-inko_core = {path = "../inko_core"}
+axum-extra = { version = "0.9.0", features = ["cookie"] }
+inko_core = { path = "../inko_core" }
 regex = "1.10.2"
 serde_json = "1.0.108"
 serde_qs = "0.12.0"

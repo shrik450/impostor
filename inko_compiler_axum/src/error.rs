@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::entry::EntryCompilationError;
 
 #[derive(Debug)]
@@ -5,6 +7,7 @@ pub enum Error {
     Unknown,
     ParseError(inko_core::parser::Error),
     EntryCompilationError(EntryCompilationError),
+    InvalidMethod(Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl std::fmt::Display for Error {
@@ -13,6 +16,7 @@ impl std::fmt::Display for Error {
             Error::Unknown => write!(f, "unknown error"),
             Error::ParseError(e) => write!(f, "parse error: {}", e),
             Error::EntryCompilationError(e) => write!(f, "entry compilation error: {}", e),
+            Error::InvalidMethod(e) => write!(f, "invalid method: {}", e),
         }
     }
 }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, os::macos::raw};
+use std::collections::HashMap;
 
 use inko_core::ast::Template;
 
@@ -18,6 +18,7 @@ impl std::fmt::Display for TemplateExecutionError {
 
 /// Perf optimization to avoid having to execute a template if it's just a
 /// static string.
+#[derive(Clone)]
 pub(crate) enum StringOrTemplate {
     String(String),
     Template(Template),

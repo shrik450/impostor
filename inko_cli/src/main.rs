@@ -21,7 +21,7 @@ async fn main() -> eyre::Result<()> {
 
     let contents = std::fs::read_to_string(args.path_to_file)?;
 
-    let compiled = compile(&contents);
+    let compiled = compile(&contents)?;
 
     let port = args.port.unwrap_or(3939);
     let address = SocketAddrV4::new(std::net::Ipv4Addr::new(127, 0, 0, 1), port);
