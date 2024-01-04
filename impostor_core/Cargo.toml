@@ -1,0 +1,15 @@
+[package]
+authors = ["Shrikanth Upadhayaya <shrikanth@abis.moe>", "Vaishnav Sreekanth Menon <vaishnav@abis.moe>"]
+description = "impostor_core"
+documentation = "https://github.com/abismoe/impostor"
+edition = "2021"
+homepage = "https://github.com/abismoe/impostor"
+license = "Apache-2.0"
+name = "impostor_core"
+repository = "https://github.com/abismoe/impostor"
+version = "0.1.0"
+
+[dependencies]
+float-cmp = "0.9.0"
+libxml = "0.3.3"
+regex = "1.10.2"

@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-  "inko_core",
-  "inko_compiler_axum",
-  "inko_cli",
+  "impostor_core",
+  "impostor_compiler_axum",
+  "impostor_cli",
 ]
