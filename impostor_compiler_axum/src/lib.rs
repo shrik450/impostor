@@ -135,6 +135,59 @@ mod test {
     }
 
     #[tokio::test]
+    async fn test_compile_route_without_asserts_should_match_all_requests() {
+        let contents = r#"
+            GET /hello
+
+            HTTP 200
+            Content-Type: application/json
+
+            {"hello": "world"}
+        "#;
+
+        let router = compile(contents).unwrap();
+
+        let request = axum::http::Request::builder()
+            .uri("/hello")
+            .header("x-foo", "bar")
+            .body(Body::empty())
+            .unwrap();
+        let response = router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), axum::http::StatusCode::OK);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "application/json"
+        );
+        let body_as_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(body_as_bytes.as_ref(), br#"{"hello": "world"}"#);
+    }
+
+    #[tokio::test]
+    async fn test_compile_unmatched_route_should_404() {
+        let contents = r#"
+            GET /hello
+
+            HTTP 200
+            Content-Type: application/json
+
+            {"hello": "world"}
+        "#;
+
+        let router = compile(contents).unwrap();
+
+        let request = axum::http::Request::builder()
+            .uri("/goodbye")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), axum::http::StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
     async fn test_compile_two_routes() {
         let contents = r#"
             GET /hello-json
