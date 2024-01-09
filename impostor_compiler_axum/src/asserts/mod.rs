@@ -16,10 +16,6 @@ pub enum AssertCompilationError {
     InvalidPredicateValue(String),
 }
 
-pub enum AssertionError {
-    InvalidQueryValue(Box<dyn Display>),
-}
-
 impl Display for AssertCompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -32,7 +28,24 @@ impl Display for AssertCompilationError {
     }
 }
 
-#[derive(Clone)]
+impl std::error::Error for AssertCompilationError {}
+
+#[derive(Debug)]
+pub enum AssertionError {
+    InvalidQueryValue(Box<dyn std::error::Error>),
+}
+
+impl Display for AssertionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AssertionError::InvalidQueryValue(e) => write!(f, "invalid query value - {}", e),
+        }
+    }
+}
+
+impl std::error::Error for AssertionError {}
+
+#[derive(Clone, Debug)]
 pub(crate) struct Assert {
     query: Query,
     predicate: Predicate,
@@ -83,5 +96,90 @@ impl Assert {
         } else {
             assertion_result
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use axum::body::Body;
+
+    use super::*;
+
+    #[test]
+    fn test_assert_header() {
+        let assert = Assert {
+            query: Query::Header("foo".to_string()),
+            predicate: Predicate::Equal(json!("bar")),
+            not: false,
+        };
+
+        let request = Request::builder()
+            .header("foo", "bar")
+            .body(Body::empty())
+            .unwrap();
+        assert!(assert.apply(&request).unwrap());
+
+        let request = Request::builder()
+            .header("foo", "baz")
+            .body(Body::empty())
+            .unwrap();
+        assert!(!assert.apply(&request).unwrap());
+    }
+
+    #[test]
+    fn test_assert_header_not() {
+        let assert = Assert {
+            query: Query::Header("foo".to_string()),
+            predicate: Predicate::Equal(json!("bar")),
+            not: true,
+        };
+
+        let request = Request::builder()
+            .header("foo", "bar")
+            .body(Body::empty())
+            .unwrap();
+        assert!(!assert.apply(&request).unwrap());
+
+        let request = Request::builder()
+            .header("foo", "baz")
+            .body(Body::empty())
+            .unwrap();
+        assert!(assert.apply(&request).unwrap());
+    }
+
+    #[test]
+    fn test_assert_query_param() {
+        let assert = Assert {
+            query: Query::QueryParam("foo".to_string()),
+            predicate: Predicate::Equal(json!("bar")),
+            not: false,
+        };
+
+        let request = Request::builder()
+            .uri("http://localhost:3000/?foo=bar")
+            .body(Body::empty())
+            .unwrap();
+        assert!(assert.apply(&request).unwrap());
+
+        let request = Request::builder()
+            .uri("http://localhost:3000/?foo=baz")
+            .body(Body::empty())
+            .unwrap();
+        assert!(!assert.apply(&request).unwrap());
+    }
+
+    #[test]
+    fn test_assert_header_value_invalid() {
+        let assert = Assert {
+            query: Query::Header("foo".to_string()),
+            predicate: Predicate::Equal(json!("bar")),
+            not: false,
+        };
+
+        let request = Request::builder()
+            .header("foo", "世界")
+            .body(Body::empty())
+            .unwrap();
+        assert!(assert.apply(&request).is_err());
     }
 }

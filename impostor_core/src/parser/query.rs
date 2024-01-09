@@ -36,28 +36,21 @@ pub fn query(reader: &mut Reader) -> ParseResult<Query> {
 fn query_value(reader: &mut Reader) -> ParseResult<QueryValue> {
     choice(
         &[
-            status_query,
             url_query,
             header_query,
+            query_param_query,
             cookie_query,
             body_query,
             xpath_query,
             jsonpath_query,
             regex_query,
             variable_query,
-            duration_query,
             bytes_query,
             sha256_query,
             md5_query,
-            certificate_query,
         ],
         reader,
     )
-}
-
-fn status_query(reader: &mut Reader) -> ParseResult<QueryValue> {
-    try_literal("status", reader)?;
-    Ok(QueryValue::Status)
 }
 
 fn url_query(reader: &mut Reader) -> ParseResult<QueryValue> {
@@ -70,6 +63,13 @@ fn header_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     let space0 = one_or_more_spaces(reader)?;
     let name = quoted_template(reader).map_err(|e| e.non_recoverable())?;
     Ok(QueryValue::Header { space0, name })
+}
+
+fn query_param_query(reader: &mut Reader) -> ParseResult<QueryValue> {
+    try_literal("queryparam", reader)?;
+    let space0 = one_or_more_spaces(reader)?;
+    let name = quoted_template(reader).map_err(|e| e.non_recoverable())?;
+    Ok(QueryValue::QueryParam { space0, name })
 }
 
 fn cookie_query(reader: &mut Reader) -> ParseResult<QueryValue> {
@@ -105,20 +105,7 @@ fn xpath_query(reader: &mut Reader) -> ParseResult<QueryValue> {
 fn jsonpath_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     try_literal("jsonpath", reader)?;
     let space0 = one_or_more_spaces(reader)?;
-    //let expr = jsonpath_expr(reader)?;
-    //  let start = reader.state.pos.clone();
     let expr = quoted_template(reader).map_err(|e| e.non_recoverable())?;
-    //    let end = reader.state.pos.clone();
-    //    let expr = Template {
-    //        elements: template.elements.iter().map(|e| match e {
-    //            TemplateElement::String { value, encoded } => HurlTemplateElement::Literal {
-    //                value: HurlString2 { value: value.clone(), encoded: Some(encoded.clone()) }
-    //            },
-    //            TemplateElement::Expression(value) => HurlTemplateElement::Expression { value: value.clone() }
-    //        }).collect(),
-    //        quotes: true,
-    //        source_info: SourceInfo { start, end },
-    //    };
 
     Ok(QueryValue::Jsonpath { space0, expr })
 }
@@ -159,11 +146,6 @@ fn variable_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     Ok(QueryValue::Variable { space0, name })
 }
 
-fn duration_query(reader: &mut Reader) -> ParseResult<QueryValue> {
-    try_literal("duration", reader)?;
-    Ok(QueryValue::Duration)
-}
-
 fn bytes_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     try_literal("bytes", reader)?;
     Ok(QueryValue::Bytes)
@@ -179,37 +161,6 @@ fn md5_query(reader: &mut Reader) -> ParseResult<QueryValue> {
     Ok(QueryValue::Md5)
 }
 
-fn certificate_query(reader: &mut Reader) -> ParseResult<QueryValue> {
-    try_literal("certificate", reader)?;
-    let space0 = one_or_more_spaces(reader)?;
-    let field = certificate_field(reader)?;
-    Ok(QueryValue::Certificate {
-        space0,
-        attribute_name: field,
-    })
-}
-
-fn certificate_field(reader: &mut Reader) -> ParseResult<CertificateAttributeName> {
-    literal("\"", reader)?;
-    if try_literal(r#"Subject""#, reader).is_ok() {
-        Ok(CertificateAttributeName::Subject)
-    } else if try_literal(r#"Issuer""#, reader).is_ok() {
-        Ok(CertificateAttributeName::Issuer)
-    } else if try_literal(r#"Start-Date""#, reader).is_ok() {
-        Ok(CertificateAttributeName::StartDate)
-    } else if try_literal(r#"Expire-Date""#, reader).is_ok() {
-        Ok(CertificateAttributeName::ExpireDate)
-    } else if try_literal(r#"Serial-Number""#, reader).is_ok() {
-        Ok(CertificateAttributeName::SerialNumber)
-    } else {
-        let value =
-            "Field <Subject>, <Issuer>, <Start-Date>, <Expire-Date> or <Serial-Number>".to_string();
-        let inner = ParseError::Expecting { value };
-        let pos = reader.state.pos;
-        Err(Error::new(pos, false, inner))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,24 +168,12 @@ mod tests {
 
     #[test]
     fn test_query() {
-        let mut reader = Reader::new("status");
+        let mut reader = Reader::new("sha256");
         assert_eq!(
             query(&mut reader).unwrap(),
             Query {
                 source_info: SourceInfo::new(Pos::new(1, 1), Pos::new(1, 7)),
-                value: QueryValue::Status,
-            }
-        );
-    }
-
-    #[test]
-    fn test_status_query() {
-        let mut reader = Reader::new("status");
-        assert_eq!(
-            query(&mut reader).unwrap(),
-            Query {
-                source_info: SourceInfo::new(Pos::new(1, 1), Pos::new(1, 7)),
-                value: QueryValue::Status,
+                value: QueryValue::Sha256,
             }
         );
     }

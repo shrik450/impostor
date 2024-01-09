@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use axum::{
     extract::Request,
-    http::{header::InvalidHeaderValue, HeaderMap, HeaderName, HeaderValue},
+    http::{HeaderMap, HeaderName, HeaderValue},
 };
 use impostor_core::ast::{Bytes as AstBytes, Entry as AstEntry};
 
@@ -41,7 +41,7 @@ impl std::fmt::Display for EntryCompilationError {
 }
 
 /// An entry from the Impostor AST compiled for use as an axum handler.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Entry {
     // Attributes required for routing
     pub path: String,
@@ -124,6 +124,10 @@ impl std::fmt::Display for InternalError {
 }
 
 impl Entry {
+    /// Handle an axum request with this entry.
+    ///
+    /// The returned tuple implements the axum `IntoResponse` trait, so it can
+    /// be returned directly from an axum handler.
     pub fn handler(&self, _request: Request) -> (axum::http::StatusCode, HeaderMap, Vec<u8>) {
         let status_code = self.status_code;
 
@@ -174,6 +178,11 @@ impl Entry {
         }
     }
 
+    /// Check if this entry matches a request.
+    ///
+    /// An entry matches a request if all of its asserts pass. Matching the
+    /// request path isn't handled here, and should be handled by the axum
+    /// router.
     pub fn matches(&self, request: &Request) -> bool {
         self.asserts
             .iter()
@@ -186,8 +195,8 @@ fn compile_body(body: AstBytes) -> StringOrTemplate {
     match body {
         AstBytes::Json(val) => StringOrTemplate::String(val.encoded()),
         AstBytes::Xml(val) => StringOrTemplate::String(val),
-        AstBytes::MultilineString(val) => StringOrTemplate::from_ast_template(val.value()),
-        AstBytes::OnelineString(val) => StringOrTemplate::from_ast_template(val),
+        AstBytes::MultilineString(val) => val.value().into(),
+        AstBytes::OnelineString(val) => val.into(),
         AstBytes::Base64(_) => todo!(),
         AstBytes::File(_) => todo!(),
         AstBytes::Hex(_) => todo!(),

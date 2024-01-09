@@ -56,8 +56,8 @@ pub enum ParseError {
     Status,
     TemplateVariable,
     Unicode,
-    UrlIllegalCharacter(char),
-    UrlInvalidStart,
+    PathIllegalCharacter(char),
+    PathInvalidStart,
     Version,
     XPathExpr,
     Xml,
@@ -126,8 +126,8 @@ impl crate::error::Error for Error {
             ParseError::Status => "Parsing status code".to_string(),
             ParseError::TemplateVariable => "Parsing template variable".to_string(),
             ParseError::Unicode => "Parsing unicode literal".to_string(),
-            ParseError::UrlIllegalCharacter(_) => "Parsing URL".to_string(),
-            ParseError::UrlInvalidStart => "Parsing URL".to_string(),
+            ParseError::PathIllegalCharacter(_) => "Parsing Path".to_string(),
+            ParseError::PathInvalidStart => "Parsing Path".to_string(),
             ParseError::Version => "Parsing version".to_string(),
             ParseError::XPathExpr => "Parsing XPath expression".to_string(),
             ParseError::Xml => "Parsing XML".to_string(),
@@ -228,8 +228,8 @@ impl crate::error::Error for Error {
             ParseError::Status => "HTTP status code is not valid".to_string(),
             ParseError::TemplateVariable => "expecting a variable".to_string(),
             ParseError::Unicode => "Invalid unicode literal".to_string(),
-            ParseError::UrlIllegalCharacter(c) => format!("illegal character <{c}>"),
-            ParseError::UrlInvalidStart => "expecting http://, https:// or {{".to_string(),
+            ParseError::PathIllegalCharacter(c) => format!("illegal character <{c}>"),
+            ParseError::PathInvalidStart => "expecting http://, https:// or {{".to_string(),
             ParseError::Version => {
                 "HTTP version must be HTTP, HTTP/1.0, HTTP/1.1 or HTTP/2".to_string()
             }

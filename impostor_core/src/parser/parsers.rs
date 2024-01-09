@@ -56,7 +56,7 @@ fn request(reader: &mut Reader) -> ParseResult<Request> {
 
     let line_terminator0 = line_terminator(reader)?;
     let headers = zero_or_more(key_value, reader)?;
-    let sections = response_sections(reader)?;
+    let sections = request_sections(reader)?;
     let b = optional(body, reader)?;
     let source_info = SourceInfo::new(start.pos, reader.state.pos);
 
@@ -97,7 +97,6 @@ fn response(reader: &mut Reader) -> ParseResult<Response> {
     let _status = status(reader)?;
     let line_terminator0 = line_terminator(reader)?;
     let headers = zero_or_more(key_value, reader)?;
-    let sections = request_sections(reader)?;
     let b = optional(body, reader)?;
     Ok(Response {
         line_terminators,
@@ -107,7 +106,6 @@ fn response(reader: &mut Reader) -> ParseResult<Response> {
         status: _status,
         line_terminator0,
         headers,
-        sections,
         body: b,
         source_info: SourceInfo::new(start.pos, reader.state.pos),
     })
@@ -197,46 +195,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hurl_file() {
-        let mut reader = Reader::new("GET http://google.fr");
+    fn test_impostor_file() {
+        let mut reader = Reader::new("GET http://google.fr\nHTTP 200");
         let hurl_file = impostor_file(&mut reader).unwrap();
         assert_eq!(hurl_file.entries.len(), 1);
     }
 
     #[test]
     fn test_entry() {
-        let mut reader = Reader::new("GET http://google.fr");
+        let mut reader = Reader::new("GET http://google.fr\nHTTP 200");
         let e = entry(&mut reader).unwrap();
         assert_eq!(e.request.method, Method("GET".to_string()));
-        assert_eq!(reader.state.cursor, 20);
+        assert_eq!(reader.state.cursor, 29);
     }
 
     #[test]
     fn test_several_entry() {
-        let mut reader = Reader::new("GET http://google.fr\nGET http://google.fr");
+        let mut reader =
+            Reader::new("GET http://google.fr\nHTTP 200\nGET http://google.fr\nHTTP 200");
 
         let e = entry(&mut reader).unwrap();
         assert_eq!(e.request.method, Method("GET".to_string()));
-        assert_eq!(reader.state.cursor, 21);
-        assert_eq!(reader.state.pos.line, 2);
+        assert_eq!(reader.state.cursor, 30);
+        assert_eq!(reader.state.pos.line, 3);
+
+        let e = entry(&mut reader).unwrap();
+        assert_eq!(e.request.method, Method("GET".to_string()));
+        assert_eq!(reader.state.cursor, 59);
+        assert_eq!(reader.state.pos.line, 4);
+
+        let mut reader = Reader::new(
+            "GET http://google.fr # comment1\nHTTP 200\nGET http://google.fr # comment2\nHTTP 200",
+        );
 
         let e = entry(&mut reader).unwrap();
         assert_eq!(e.request.method, Method("GET".to_string()));
         assert_eq!(reader.state.cursor, 41);
-        assert_eq!(reader.state.pos.line, 2);
-
-        let mut reader =
-            Reader::new("GET http://google.fr # comment1\nGET http://google.fr # comment2");
+        assert_eq!(reader.state.pos.line, 3);
 
         let e = entry(&mut reader).unwrap();
         assert_eq!(e.request.method, Method("GET".to_string()));
-        assert_eq!(reader.state.cursor, 32);
-        assert_eq!(reader.state.pos.line, 2);
-
-        let e = entry(&mut reader).unwrap();
-        assert_eq!(e.request.method, Method("GET".to_string()));
-        assert_eq!(reader.state.cursor, 63);
-        assert_eq!(reader.state.pos.line, 2);
+        assert_eq!(reader.state.cursor, 81);
+        assert_eq!(reader.state.pos.line, 4);
     }
 
     #[test]
@@ -438,6 +438,60 @@ mod tests {
             r.body.unwrap().value,
             Bytes::Json(JsonValue::Number("100".to_string()))
         );
+    }
+
+    #[test]
+    fn test_request_with_headers() {
+        let mut reader =
+            Reader::new("GET http://google.fr\nAccept: text/plain\nContent-Type: text/plain");
+        let r = request(&mut reader).unwrap();
+        assert_eq!(r.method, Method("GET".to_string()));
+        assert_eq!(r.headers.len(), 2);
+        assert_eq!(r.headers[0].key.encoded(), "Accept");
+        assert_eq!(r.headers[0].value.encoded(), "text/plain");
+        assert_eq!(r.headers[1].key.encoded(), "Content-Type");
+        assert_eq!(r.headers[1].value.encoded(), "text/plain");
+    }
+
+    #[test]
+    fn test_request_with_asserts() {
+        let mut reader = Reader::new(
+            "GET /hello\n\
+            Accept: text/plain\n\
+            [Asserts]\n\
+            header \"Content-Type\" == \"text/plain\"\n",
+        );
+        let r = request(&mut reader).unwrap();
+        assert_eq!(r.method, Method("GET".to_string()));
+        assert_eq!(r.headers.len(), 1);
+        assert_eq!(r.headers[0].key.encoded(), "Accept");
+        assert_eq!(r.headers[0].value.encoded(), "text/plain");
+        assert_eq!(r.sections.len(), 1);
+        assert_eq!(r.sections[0].name(), "Asserts");
+        assert_eq!(r.asserts().len(), 1);
+
+        if let crate::ast::QueryValue::Header { space0: _, name } = &r.asserts()[0].query.value {
+            assert_eq!(name.encoded(), r#""Content-Type""#);
+        } else {
+            panic!("Not Header");
+        }
+
+        let value = if let crate::ast::PredicateFuncValue::Equal {
+            space0: _,
+            value,
+            operator: _,
+        } = r.asserts()[0].clone().predicate.predicate_func.value
+        {
+            value
+        } else {
+            panic!("Not Equal");
+        };
+
+        if let crate::ast::PredicateValue::String(s) = value {
+            assert_eq!(s.encoded(), r#""text/plain""#);
+        } else {
+            panic!("Not Equal");
+        }
     }
 
     #[test]

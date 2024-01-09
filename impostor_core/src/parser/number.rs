@@ -60,15 +60,6 @@ pub fn natural(reader: &mut Reader) -> ParseResult<u64> {
     }
 }
 
-pub fn integer(reader: &mut Reader) -> ParseResult<i64> {
-    let sign = match try_literal("-", reader) {
-        Err(_) => 1,
-        Ok(_) => -1,
-    };
-    let nat = natural(reader)?;
-    Ok(sign * (nat as i64))
-}
-
 pub fn number(reader: &mut Reader) -> ParseResult<Number> {
     let start = reader.state;
     let sign = match try_literal("-", reader) {
@@ -173,29 +164,6 @@ mod tests {
             }
         );
         assert!(error.recoverable);
-    }
-
-    #[test]
-    fn test_integer() {
-        let mut reader = Reader::new("0");
-        assert_eq!(integer(&mut reader).unwrap(), 0);
-        assert_eq!(reader.state.cursor, 1);
-
-        let mut reader = Reader::new("-1");
-        assert_eq!(integer(&mut reader).unwrap(), -1);
-        assert_eq!(reader.state.cursor, 2);
-
-        let mut reader = Reader::new("0");
-        assert_eq!(number(&mut reader).unwrap(), Number::Integer(0));
-        assert_eq!(reader.state.cursor, 1);
-
-        let mut reader = Reader::new("10x");
-        assert_eq!(number(&mut reader).unwrap(), Number::Integer(10));
-        assert_eq!(reader.state.cursor, 2);
-
-        let mut reader = Reader::new("-10x");
-        assert_eq!(number(&mut reader).unwrap(), Number::Integer(-10));
-        assert_eq!(reader.state.cursor, 3);
     }
 
     #[test]

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use impostor_core::ast::Template;
 
+use crate::possibly_trim_surrounding_quotes;
+
 pub enum TemplateExecutionError {
     UnknownVariable(String),
 }
@@ -18,13 +20,16 @@ impl std::fmt::Display for TemplateExecutionError {
 
 /// Perf optimization to avoid having to execute a template if it's just a
 /// static string.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum StringOrTemplate {
     String(String),
     Template(Template),
 }
 
 impl StringOrTemplate {
+    /// Executes the template, substituting variables with values from the
+    /// context. If the template is just a static string, returns a copy of that
+    /// string. This means that this method will always allocate.
     pub fn execute(&self) -> Result<String, TemplateExecutionError> {
         match self {
             StringOrTemplate::String(s) => Ok(s.clone()),
@@ -41,12 +46,18 @@ impl StringOrTemplate {
         {
             StringOrTemplate::Template(template)
         } else {
-            StringOrTemplate::String(template.encoded())
+            StringOrTemplate::String(possibly_trim_surrounding_quotes(template.encoded()))
         }
     }
 }
 
-pub fn execute(
+impl From<Template> for StringOrTemplate {
+    fn from(template: Template) -> Self {
+        Self::from_ast_template(template)
+    }
+}
+
+fn execute(
     template: &Template,
     context: HashMap<String, String>,
 ) -> Result<String, TemplateExecutionError> {

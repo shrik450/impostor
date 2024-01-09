@@ -24,7 +24,7 @@ struct Cli {
 async fn main() -> eyre::Result<()> {
     env_logger::init();
 
-    log::info!("Poseur v{}", VERSION);
+    log::info!("Impostor v{}", VERSION);
 
     let args = Cli::parse();
     let contents = std::fs::read_to_string(&args.path_to_file)?;

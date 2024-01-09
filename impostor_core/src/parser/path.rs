@@ -91,7 +91,7 @@ pub fn path(reader: &mut Reader) -> ParseResult<Template> {
         return Err(Error::new(
             reader.state.pos,
             false,
-            ParseError::UrlIllegalCharacter(c),
+            ParseError::PathIllegalCharacter(c),
         ));
     }
 
@@ -108,10 +108,12 @@ pub fn path(reader: &mut Reader) -> ParseResult<Template> {
 
 #[cfg(test)]
 mod tests {
+    // All of these are acarried over from hurl's URL tests, and need to be
+    // changed.
     use super::*;
 
     #[test]
-    fn test_url() {
+    fn test_path() {
         let mut reader = Reader::new("http://google.fr # ");
         assert_eq!(
             path(&mut reader).unwrap(),
@@ -128,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url2() {
+    fn test_path2() {
         let mut reader = Reader::new("http://localhost:8000/cookies/set-session-cookie2-valueA");
         assert_eq!(
             path(&mut reader).unwrap(),
@@ -147,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url_with_expression() {
+    fn test_path_with_expression() {
         let mut reader = Reader::new("http://{{host}}.fr ");
         assert_eq!(
             path(&mut reader).unwrap(),
@@ -184,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url_error_variable() {
+    fn test_path_error_variable() {
         let mut reader = Reader::new("http://{{host>}}.fr");
         let error = path(&mut reader).err().unwrap();
         assert_eq!(
@@ -205,7 +207,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url_error_missing_delimiter() {
+    fn test_path_error_missing_delimiter() {
         let mut reader = Reader::new("http://{{host");
         let error = path(&mut reader).err().unwrap();
         assert_eq!(
@@ -225,17 +227,9 @@ mod tests {
     }
 
     #[test]
-    fn test_url_error_empty() {
-        let mut reader = Reader::new(" # eol");
-        let error = path(&mut reader).err().unwrap();
-        assert_eq!(error.pos, Pos { line: 1, column: 1 });
-        assert_eq!(error.inner, ParseError::UrlInvalidStart);
-    }
-
-    #[test]
-    fn test_valid_urls() {
+    fn test_valid_paths() {
         // from official url_test.go file
-        let valid_urls = [
+        let valid_paths = [
             "http://www.google.com",
             "http://www.google.com/",
             "http://www.google.com/file%20one%26two",
@@ -288,7 +282,7 @@ mod tests {
             "http://hello.%E4%B8%96%E7%95%8C.com/foo",
             "http://example.com//foo",
         ];
-        for s in valid_urls {
+        for s in valid_paths {
             //eprintln!("{}", s);
             let mut reader = Reader::new(s);
             assert!(path(&mut reader).is_ok());

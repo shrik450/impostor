@@ -42,7 +42,7 @@ pub struct Request {
     pub path: Template,
     pub line_terminator0: LineTerminator,
     pub headers: Vec<Header>,
-    pub sections: Vec<Section>,
+    pub sections: Vec<RequestSection>,
     pub body: Option<Body>,
     pub source_info: SourceInfo,
 }
@@ -51,7 +51,7 @@ impl Request {
     /// Returns the captures list of this spec request.
     pub fn captures(&self) -> Vec<Capture> {
         for section in self.sections.iter() {
-            if let SectionValue::Captures(captures) = &section.value {
+            if let RequestSectionValue::Captures(captures) = &section.value {
                 return captures.clone();
             }
         }
@@ -61,61 +61,8 @@ impl Request {
     /// Returns the asserts list of this spec request.
     pub fn asserts(&self) -> Vec<Assert> {
         for section in self.sections.iter() {
-            if let SectionValue::Asserts(asserts) = &section.value {
+            if let RequestSectionValue::Asserts(asserts) = &section.value {
                 return asserts.clone();
-            }
-        }
-        vec![]
-    }
-
-    pub fn querystring_params(&self) -> Vec<KeyValue> {
-        for section in &self.sections {
-            if let SectionValue::QueryParams(params) = &section.value {
-                return params.clone();
-            }
-        }
-        vec![]
-    }
-
-    pub fn form_params(&self) -> Vec<KeyValue> {
-        for section in &self.sections {
-            if let SectionValue::FormParams(params) = &section.value {
-                return params.clone();
-            }
-        }
-        vec![]
-    }
-    pub fn multipart_form_data(&self) -> Vec<MultipartParam> {
-        for section in &self.sections {
-            if let SectionValue::MultipartFormData(params) = &section.value {
-                return params.clone();
-            }
-        }
-        vec![]
-    }
-
-    pub fn cookies(&self) -> Vec<Cookie> {
-        for section in &self.sections {
-            if let SectionValue::Cookies(cookies) = &section.value {
-                return cookies.clone();
-            }
-        }
-        vec![]
-    }
-
-    pub fn basic_auth(&self) -> Option<KeyValue> {
-        for section in &self.sections {
-            if let SectionValue::BasicAuth(kv) = &section.value {
-                return kv.clone();
-            }
-        }
-        None
-    }
-
-    pub fn options(&self) -> Vec<EntryOption> {
-        for section in &self.sections {
-            if let SectionValue::Options(options) = &section.value {
-                return options.clone();
             }
         }
         vec![]
@@ -131,12 +78,9 @@ pub struct Response {
     pub space1: Whitespace,
     pub line_terminator0: LineTerminator,
     pub headers: Vec<Header>,
-    pub sections: Vec<Section>,
     pub body: Option<Body>,
     pub source_info: SourceInfo,
 }
-
-impl Response {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Method(pub String);
@@ -178,51 +122,28 @@ pub struct Body {
 //
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Section {
+pub struct RequestSection {
     pub line_terminators: Vec<LineTerminator>,
     pub space0: Whitespace,
     pub line_terminator0: LineTerminator,
-    pub value: SectionValue,
+    pub value: RequestSectionValue,
     pub source_info: SourceInfo,
 }
 
-impl Section {
+impl RequestSection {
     pub fn name(&self) -> &str {
         match self.value {
-            SectionValue::Asserts(_) => "Asserts",
-            SectionValue::QueryParams(_) => "QueryStringParams",
-            SectionValue::BasicAuth(_) => "BasicAuth",
-            SectionValue::FormParams(_) => "FormParams",
-            SectionValue::Cookies(_) => "Cookies",
-            SectionValue::Captures(_) => "Captures",
-            SectionValue::MultipartFormData(_) => "MultipartFormData",
-            SectionValue::Options(_) => "Options",
+            RequestSectionValue::Asserts(_) => "Asserts",
+            RequestSectionValue::Captures(_) => "Captures",
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(clippy::large_enum_variant)]
-pub enum SectionValue {
-    QueryParams(Vec<KeyValue>),
-    BasicAuth(Option<KeyValue>),
-    FormParams(Vec<KeyValue>),
-    MultipartFormData(Vec<MultipartParam>),
-    Cookies(Vec<Cookie>),
+pub enum RequestSectionValue {
     Captures(Vec<Capture>),
     Asserts(Vec<Assert>),
-    Options(Vec<EntryOption>),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Cookie {
-    pub line_terminators: Vec<LineTerminator>,
-    pub space0: Whitespace,
-    pub name: Template,
-    pub space1: Whitespace,
-    pub space2: Whitespace,
-    pub value: Template,
-    pub line_terminator0: LineTerminator,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -234,32 +155,6 @@ pub struct KeyValue {
     pub space2: Whitespace,
     pub value: Template,
     pub line_terminator0: LineTerminator,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum MultipartParam {
-    Param(KeyValue),
-    FileParam(FileParam),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FileParam {
-    pub line_terminators: Vec<LineTerminator>,
-    pub space0: Whitespace,
-    pub key: Template,
-    pub space1: Whitespace,
-    pub space2: Whitespace,
-    pub value: FileValue,
-    pub line_terminator0: LineTerminator,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FileValue {
-    pub space0: Whitespace,
-    pub filename: Filename,
-    pub space1: Whitespace,
-    pub space2: Whitespace,
-    pub content_type: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -294,7 +189,6 @@ pub struct Query {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(clippy::large_enum_variant)]
 pub enum QueryValue {
-    Status,
     Path,
     Header {
         space0: Whitespace,
@@ -325,14 +219,9 @@ pub enum QueryValue {
         space0: Whitespace,
         name: Template,
     },
-    Duration,
     Bytes,
     Sha256,
     Md5,
-    Certificate {
-        space0: Whitespace,
-        attribute_name: CertificateAttributeName,
-    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -379,15 +268,6 @@ impl CookieAttributeName {
             | CookieAttributeName::SameSite(value) => value.to_string(),
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CertificateAttributeName {
-    Subject,
-    Issuer,
-    StartDate,
-    ExpireDate,
-    SerialNumber,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -696,112 +576,6 @@ pub struct Expr {
 pub struct Variable {
     pub name: String,
     pub source_info: SourceInfo,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EntryOption {
-    pub line_terminators: Vec<LineTerminator>,
-    pub space0: Whitespace,
-    pub space1: Whitespace,
-    pub space2: Whitespace,
-    pub kind: OptionKind,
-    pub line_terminator0: LineTerminator,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum OptionKind {
-    AwsSigV4(Template),
-    CaCertificate(Filename),
-    ClientCert(Filename),
-    ClientKey(Filename),
-    Compressed(BooleanOption),
-    ConnectTo(Template),
-    Delay(NaturalOption),
-    Http10(BooleanOption),
-    Http11(BooleanOption),
-    Http2(BooleanOption),
-    Http3(BooleanOption),
-    Insecure(BooleanOption),
-    IpV4(BooleanOption),
-    IpV6(BooleanOption),
-    FollowLocation(BooleanOption),
-    MaxRedirect(NaturalOption),
-    Output(Filename),
-    PathAsIs(BooleanOption),
-    Proxy(Template),
-    Resolve(Template),
-    Retry(RetryOption),
-    RetryInterval(NaturalOption),
-    Skip(BooleanOption),
-    Variable(VariableDefinition),
-    Verbose(BooleanOption),
-    VeryVerbose(BooleanOption),
-}
-
-impl OptionKind {
-    pub fn name(&self) -> &'static str {
-        match self {
-            OptionKind::AwsSigV4(_) => "aws-sigv4",
-            OptionKind::CaCertificate(_) => "cacert",
-            OptionKind::ClientCert(_) => "cert",
-            OptionKind::ClientKey(_) => "key",
-            OptionKind::Compressed(_) => "compressed",
-            OptionKind::ConnectTo(_) => "connect-to",
-            OptionKind::Delay(_) => "delay",
-            OptionKind::FollowLocation(_) => "location",
-            OptionKind::Http10(_) => "http1.0",
-            OptionKind::Http11(_) => "http1.1",
-            OptionKind::Http2(_) => "http2",
-            OptionKind::Http3(_) => "http3",
-            OptionKind::Insecure(_) => "insecure",
-            OptionKind::IpV4(_) => "ipv4",
-            OptionKind::IpV6(_) => "ipv6",
-            OptionKind::MaxRedirect(_) => "max-redirs",
-            OptionKind::Output(_) => "output",
-            OptionKind::PathAsIs(_) => "path-as-is",
-            OptionKind::Proxy(_) => "proxy",
-            OptionKind::Resolve(_) => "resolve",
-            OptionKind::Retry(_) => "retry",
-            OptionKind::RetryInterval(_) => "retry-interval",
-            OptionKind::Skip(_) => "skip",
-            OptionKind::Variable(_) => "variable",
-            OptionKind::Verbose(_) => "verbose",
-            OptionKind::VeryVerbose(_) => "very-verbose",
-        }
-    }
-
-    pub fn value_as_str(&self) -> String {
-        match self {
-            OptionKind::AwsSigV4(value) => value.to_string(),
-            OptionKind::CaCertificate(filename) => filename.value.clone(),
-            OptionKind::ClientCert(filename) => filename.value.clone(),
-            OptionKind::ClientKey(filename) => filename.value.clone(),
-            OptionKind::Compressed(value) => value.to_string(),
-            OptionKind::ConnectTo(value) => value.to_string(),
-            OptionKind::Delay(value) => value.to_string(),
-            OptionKind::FollowLocation(value) => value.to_string(),
-            OptionKind::Http10(value) => value.to_string(),
-            OptionKind::Http11(value) => value.to_string(),
-            OptionKind::Http2(value) => value.to_string(),
-            OptionKind::Http3(value) => value.to_string(),
-            OptionKind::Insecure(value) => value.to_string(),
-            OptionKind::IpV4(value) => value.to_string(),
-            OptionKind::IpV6(value) => value.to_string(),
-            OptionKind::MaxRedirect(value) => value.to_string(),
-            OptionKind::Output(filename) => filename.value.to_string(),
-            OptionKind::PathAsIs(value) => value.to_string(),
-            OptionKind::Proxy(value) => value.to_string(),
-            OptionKind::Resolve(value) => value.to_string(),
-            OptionKind::Retry(value) => value.to_string(),
-            OptionKind::RetryInterval(value) => value.to_string(),
-            OptionKind::Skip(value) => value.to_string(),
-            OptionKind::Variable(VariableDefinition { name, value, .. }) => {
-                format!("{name}={value}")
-            }
-            OptionKind::Verbose(value) => value.to_string(),
-            OptionKind::VeryVerbose(value) => value.to_string(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
