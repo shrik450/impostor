@@ -5,3 +5,5 @@ members = [
   "impostor_compiler_axum",
   "impostor_cli",
 ]
+
+resolver = "2"

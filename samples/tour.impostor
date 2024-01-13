@@ -1,10 +1,10 @@
 #! /usr/bin/env impostor
 
 # This is a tour of Impostor in code.
-#
+
 # Impostor is a mock server that uses a simple, text based format to define
 # mocks.
-#
+
 # As you can see, lines starting with a hash are comments.
 
 # Let's define our first mock:
@@ -49,17 +49,116 @@ queryparam "name" == "John"
 HTTP 200
 {"name": "John"}
 
-# This will match GET requests to /users?name=John. If the request doesn't have
-# the name parameter, or if it has a different value, the mock won't match, and
-# Impostor will return a 404.
+# Each assert has two parts: a "query" and a "predicate". In this case, the
+# query is `queryparam name` and the predicate is `== "John"`, which will match
+# GET requests to /users?name=John. If the request doesn't have the name
+# parameter, or if it has a different value, the mock won't match, and Impostor
+# will return a 404.
 
-# Apart from query params, you can match on:
+# Apart from query params, you can query:
 #
-# - Headers with the `header` assert.
-# - Cookies with the `cookie` assert.
-# - The full path of the request with the `path` assert.
+# - Headers with the `header` query:
+
+GET /users
+[Asserts]
+# Please don't actually do this.
+header "X-User-Name" == "John"
+
+HTTP 200
+{"name": "John"}
+
+# - Cookies with the `cookie` query:
+
+GET /users
+[Asserts]
+cookie "user_name" == "John"
+
+HTTP 200
+{"name": "John"}
+
+# As you can see, you can have multiple mocks on the same route with different
+# asserts. Impostor will go in the order they are defined in the mock file and
+# use the first one that matches.
+
+# Apart from a strict equality predicate, there are also other types:
 #
-# You can also implicitly define a header assert:
+# - `!=`:
+
+GET /users
+[Asserts]
+queryparam "name" != "John"
+
+HTTP 200
+{"name": "Jane"}
+
+# - startsWith, endsWith, contains:
+
+GET /is_authorized
+[Asserts]
+queryparam "user_name" startsWith "J"
+
+HTTP 200
+{"is_authorized": true}
+
+GET /is_authorized
+[Asserts]
+queryparam "user_name" endsWith "n"
+
+HTTP 200
+{"is_authorized": true}
+
+GET /is_authorized
+[Asserts]
+queryparam "user_name" contains "oh"
+
+HTTP 200
+{"is_authorized": true}
+
+GET /is_authorized
+
+HTTP 200
+{"is_authorized": false}
+
+# - matches:
+
+GET /better_is_authorized
+[Asserts]
+queryparam "user_name" matches /J(oh)?n/
+
+HTTP 200
+{"is_authorized": true}
+
+GET /better_is_authorized
+
+HTTP 200
+{"is_authorized": false}
+
+# - exist:
+
+GET /offers
+[Asserts]
+queryparam "id" == "1"
+
+HTTP 200
+{"name": "Offer 1"}
+
+GET /offers
+[Asserts]
+queryparam "id" exists
+
+HTTP 404
+{"error": "Offer not found"}
+
+# You can also invert any predicate using the `not` keyword:
+
+GET /offers
+[Asserts]
+queryparam "id" not exists
+
+HTTP 400
+{"error": "Expected offer id"}
+
+# And finally, you can also implicitly define a header assert:
 
 GET /orders
 Accept: application/json
@@ -70,12 +169,6 @@ HTTP 200
 Content-Type: application/json
 {"id": 123}
 
-# This will match GET requests to /users?name=John with the Accept header set to
-# application/json.
-
-# You can also define multiple mocks to the same route with different asserts,
-# such as:
-
 GET /orders
 Accept: text/html
 [Asserts]
@@ -84,43 +177,3 @@ queryparam "id" == "123"
 HTTP 200
 Content-Type: text/html
 `<html><body>Order 123</body></html>`
-
-# This will match GET requests to /users?name=John with the Accept header set to
-# text/html.
-
-# If there are multiple routes that match a request, Impostor will return the
-# first one defined in the file. So, if you want to have a fallback route, you
-# should define it last. Here is a somewhat contrived example:
-
-GET /offers
-[Asserts]
-queryparam "id" == "1"
-
-HTTP 200
-Content-Type: application/json
-{"id": 1, "name": "Offer 1"}
-
-GET /offers
-[Asserts]
-queryparam "id" == "2"
-
-HTTP 200
-Content-Type: application/json
-{"id": 2, "name": "Offer 2"}
-
-GET /offers
-[Asserts]
-queryparam "id" exists
-
-HTTP 404
-Content-Type: application/json
-{"error": "Offer not found"}
-
-GET /offers
-HTTP 400
-
-Content-Type: application/json
-{"error": "Offer ID must be present"}
-
-# This does what you expect it to: it returns the offer with the given ID, or a
-# 404 if it doesn't exist, or a 400 if the ID is missing.
