@@ -331,7 +331,7 @@ fn try_into_number(value: AstPredicateValue) -> Result<Number, AssertCompilation
 
 fn try_into_string(value: AstPredicateValue) -> Result<String, AssertCompilationError> {
     Ok(match value {
-        AstPredicateValue::String(value) => value.encoded(),
+        AstPredicateValue::String(value) => possibly_trim_surrounding_quotes(value.encoded()),
         _ => {
             return Err(AssertCompilationError::InvalidPredicateValue(
                 "expected string".into(),
