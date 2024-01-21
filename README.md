@@ -22,11 +22,14 @@ For a tour of Impostor that goes into more detail, see
 There are currently two ways to use Impostor:
 
 - Download a release from the [releases page](https://github.com/abismoe/impostor/releases)
+  and place it in your `PATH`.
 - Install from cargo:
 
     ```sh
-    cargo install impostor
+    cargo install impostor_cli
     ```
+
+Either way, you should be able to run impostor with `impostor --help`.
 
 ## Goals and Philosophy
 
