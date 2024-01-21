@@ -2,6 +2,10 @@ use std::fmt::Debug;
 
 use crate::entry::EntryCompilationError;
 
+// Allowing clippy::enum_variant_names because the variants that trigger this
+// lint are wrapping other errors, and I feel like it's better to be explicit
+// about that.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum Error {
     Unknown,

@@ -1,6 +1,12 @@
 [package]
+authors = ["Shrikanth Upadhayaya <shrikanth@abis.moe>", "Vaishnav Sreekanth Menon <vaishnav@abis.moe>"]
+description = "Run impostor mock files as a mock server"
+documentation = "https://github.com/abismoe/impostor"
 edition = "2021"
+homepage = "https://github.com/abismoe/impostor"
+license = "Apache-2.0"
 name = "impostor_cli"
+repository = "https://github.com/abismoe/impostor"
 version = "0.1.0"
 
 [[bin]]
