@@ -15,7 +15,7 @@ Content-Type: text/plain
 ```
 
 For a tour of Impostor that goes into more detail, see
-[the tour of Impostor.](./samples/tour.hurl)
+[the tour of Impostor.](./samples/tour.impostor)
 
 ## Installation
 
